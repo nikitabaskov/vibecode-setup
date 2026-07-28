@@ -54,6 +54,7 @@ npx skills add multica-ai/andrej-karpathy-skills
 
 # 3.3 ClaudeForge (Плагин авто-управления и чистки CLAUDE.md)
 npx skills add alirezarezvani/ClaudeForge
+curl -fsSL https://raw.githubusercontent.com/alirezarezvani/ClaudeForge/main/install.sh | bash
 
 # 3.4 Matt Pocock Skills (Плагин процессов разработки)
 claude plugin marketplace add mattpocock/skills
