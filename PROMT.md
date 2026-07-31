@@ -10,8 +10,13 @@ In addition to your standard repository analysis, EXPLICITLY weave the following
    - Before editing architecture or searching code relationships, FIRST use `codebase-memory-mcp` (`get_architecture`, `trace_path`). Do not read files manually just for orientation.
    - For complex multi-step refactoring or bug hunting, ALWAYS trigger `Sequential Thinking MCP`.
    - If in doubt about library APIs, fetch up-to-date documentation using `Fetch MCP`.
+  
+3. **Environment, Quality & Testing (uv, Ruff, Pytest):**
+   - ALWAYS use `uv` for environment management, package installation, and running scripts (`uv run ...`, `uv sync`).
+   - ALWAYS run `ruff check --fix . && ruff format .` after modifying Python code.
+   - If tests exist in the repository, ALWAYS run them (e.g., `uv run pytest`) after making changes to verify correctness.
 
-3. **Behavioral & Communication Rules (Every Session):**
+4. **Behavioral & Communication Rules (Every Session):**
    - **User Language:** ALWAYS respond to the user in RUSSIAN. (Internal thinking, tool calls, and CLAUDE.md itself must be in English).
    - **Caveman Mode:** Be extremely concise, direct, and zero-fluff. Skip pleasantries and long explanations.
    - **Karpathy Mode:** Make minimal diffs. Do not refactor or reformat unrelated code around your changes.
