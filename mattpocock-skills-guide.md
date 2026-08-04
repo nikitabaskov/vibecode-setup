@@ -46,7 +46,7 @@
 Для создания любой новой фичи рекомендуется использовать следующий цепочечный процесс:
 
 ```text
-[ //mattpocock-skills:grill-with-docs ] ➔ [ //mattpocock-skills:to-spec ] ➔ [ //mattpocock-skills:to-tickets ] ➔ [ tdd ] ➔ [ code-review ]
+[ /mattpocock-skills:grill-with-docs ] ➔ [ /mattpocock-skills:to-spec ] ➔ [ /mattpocock-skills:to-tickets ] ➔ [ tdd ] ➔ [ code-review ]
 ```
 
 #### 1. Уточнение требований (`/grill-with-docs` / `/grill-me`)
@@ -99,12 +99,12 @@
 
 1. **Инициализация проекта (один раз):**
    ```text
-   //mattpocock-skills:setup-matt-pocock-skills
+   /mattpocock-skills:setup-matt-pocock-skills
    ```
 2. **Обсуждение идеи:**
-   > *«Я хочу добавить автокомплит в форму поиска. Проведи со мной интервью через `//mattpocock-skills:grill-with-docs`»*
+   > *«Я хочу добавить автокомплит в форму поиска. Проведи со мной интервью через `/mattpocock-skills:grill-with-docs`»*
 3. **Создание ТЗ и задач:**
-   > *«Отлично, теперь переведи результаты в спецификацию через `//mattpocock-skills:to-spec` и нарежь задачи через `//mattpocock-skills:to-tickets`»*
+   > *«Отлично, теперь переведи результаты в спецификацию через `/mattpocock-skills:to-spec` и нарежь задачи через `/mattpocock-skills:to-tickets`»*
 4. **Разработка:**
    > *«Возьми первый тикет и реализуй его»* *(Агент сам активирует `tdd`)*.
 5. **Проверка:**
