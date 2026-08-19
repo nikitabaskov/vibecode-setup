@@ -230,7 +230,89 @@ OpenCode загружает skills через встроенный инстру�
 
 ---
 
-## 5. Рекомендуемый workflow Matt Pocock
+## 5. Python LSP (Pyright)
+
+LSP даёт агенту диагностику типов и навигацию по Python-коду: переход к определению, поиск ссылок и информацию о символах. Установите Pyright один раз:
+
+```bash
+npm install -g pyright
+pyright --version
+command -v pyright-langserver
+```
+
+Для Fish, если глобальные npm-команды не находятся, добавьте каталог npm в `PATH`:
+
+```fish
+fish_add_path (npm prefix -g)/bin
+```
+
+Для Bash выполните:
+
+```bash
+export PATH="$(npm prefix -g)/bin:$PATH"
+```
+
+После изменения `PATH` полностью перезапустите агента из того же терминала.
+
+### Claude Code
+
+Claude Code подключает Pyright через официальный LSP-плагин:
+
+```text
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
+/reload-plugins
+```
+
+Проверьте установку:
+
+```bash
+claude plugin list
+pyright --version
+command -v pyright-langserver
+```
+
+Старый MCP-сервер `@mcp/python-lsp` для этого не нужен. Если он был установлен и отображается как `python-lsp MCP · failed`, удалите его:
+
+```bash
+claude mcp remove python-lsp
+```
+
+Затем перезапустите Claude Code. В `/plugin` плагин `pyright-lsp` должен быть включён без ошибок.
+
+### OpenCode
+
+Создайте глобальный `~/.config/opencode/opencode.json` для всех проектов либо `opencode.json` в корне конкретного проекта:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "lsp": true,
+  "permission": {
+    "lsp": "allow"
+  }
+}
+```
+
+Запустите OpenCode с экспериментальным инструментом навигации LSP:
+
+```bash
+OPENCODE_EXPERIMENTAL_LSP_TOOL=true opencode
+```
+
+Pyright входит в список встроенных LSP-конфигураций OpenCode и активируется для `.py` и `.pyi`, когда `pyright` установлен. Без экспериментального инструмента OpenCode всё равно может использовать LSP-диагностику, но агент не получает операции перехода к определению и поиска ссылок.
+
+### Codex
+
+В Codex нет штатной пользовательской настройки Python LSP. Добавьте в `AGENTS.md` команду проверки типов, чтобы агент запускал Pyright после изменений:
+
+```md
+После изменений Python-кода запускай `pyright`.
+```
+
+---
+
+## 6. Рекомендуемый workflow Matt Pocock
 
 ```text
 setup-matt-pocock-skills   # один раз для репозитория
@@ -248,7 +330,7 @@ code-review                # финальная проверка изменен�
 
 После установки или обновления конфигурации полностью перезапустите выбранного агента.
 
-## 6. Проверка
+## 7. Проверка
 
 ```bash
 claude plugin list
