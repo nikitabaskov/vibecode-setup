@@ -1,94 +1,271 @@
-# 🚀 Полное пошаговое руководство по развертыванию Claude Code
+# 🚀 Агентный стек для Claude Code, Codex и OpenCode
 
-Этот стек оптимизирован для **ML-инженерии и Python-разработки**, бережет до 90% токенов, строит граф кода и автоматически поддерживает порядок в `CLAUDE.md`.
+Гайд собирает окружение для ML-инженерии и Python-разработки: поиск по коду, синхронизацию Jupyter-ноутбуков, сжатие вывода терминала, MCP-серверы и skills.
+
+Можно настроить одну среду или все три. Блок «Общее окружение» выполняется один раз. Конфигурации MCP и плагины у агентов различаются — не переносите команды между ними буквально.
+
+| Среда | Запуск | Инструкции проекта | Skills |
+| --- | --- | --- | --- |
+| Claude Code | `claude` | `CLAUDE.md` | `.claude/skills/` |
+| Codex | `codex` | `AGENTS.md` | `.agents/skills/` |
+| OpenCode | `opencode` | `AGENTS.md` | `.opencode/skills/` или `.agents/skills/` |
+
+> OpenCode автоматически читает `.agents/skills/`. Это удобное общее расположение skills для Codex и OpenCode; Claude Code использует `.claude/skills/`.
 
 ---
 
-### ШАГ 1. Системные CLI-утилиты и токен-киллер (RTK)
-*Устанавливаем бинарники для поиска по AST, работы с Jupyter-ноутбуками и сжатия консольного вывода.*
+## 1. Общее окружение
+
+Сначала установите базовые CLI-инструменты:
 
 ```bash
-# 1.1 Установка ast-grep и Jupytext через uv
+# Поиск по AST и текстовые представления Jupyter-ноутбуков
 uv tool install jupytext
 uv tool install ast-grep-cli
 
-# 1.2 Установка RTK (Rust Token Killer) и активация авто-хука
+# RTK — сжатие вывода команд для экономии контекста
 curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+
+# Граф памяти кодовой базы
+curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
+codebase-memory-mcp config set auto_index true
+```
+
+Установите нужные среды по разделам 2–4, затем вернитесь сюда и подключите RTK и Codebase Memory. Для полного стека выполните все команды:
+
+```bash
+# RTK
 rtk init --global
+rtk init --global --codex
+rtk init --global --opencode
+
+# Установщик автоматически обнаруживает поддерживаемых агентов
+codebase-memory-mcp install -y
+```
+
+Установите общие skills сразу для всех трёх сред:
+
+```bash
+npx skills@latest add JuliusBrussee/caveman \
+  --global --agent claude-code codex opencode --skill '*' --yes
+
+npx skills@latest add multica-ai/andrej-karpathy-skills \
+  --global --agent claude-code codex opencode --skill '*' --yes
+```
+
+В корне каждого ML-проекта создайте `jupytext.toml`:
+
+```toml
+default_jupytext_formats = "ipynb,py:percent"
 ```
 
 ---
 
-#### ШАГ 2. Регистрация MCP-серверов (Глобально)
-*Подключаем внешние «мозги»: граф архитектуры, загрузчик документации и пошаговое планирование.*
+## 2. Claude Code
+
+### Установка и вход
 
 ```bash
-# 2.1 Граф памяти проекта (codebase-memory-mcp)
-curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
+npm install -g @anthropic-ai/claude-code
+claude
+```
 
-# Включаем автоматическую фоновую индексацию графа для всех проектов
-codebase-memory-mcp config set auto_index true
+Завершите авторизацию в первом запуске. Проверка установки: `claude doctor`.
 
-# 2.2 Модуль загрузки веб-документации (Fetch MCP через uvx)
+### MCP-серверы
+
+```bash
+# Документация по URL
 claude mcp add --scope user fetch -- uvx mcp-server-fetch
 
-# 2.3 Модуль глубокого пошагового планирования (Sequential Thinking MCP)
-claude mcp add --scope user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+# Пошаговое планирование
+claude mcp add --scope user sequential-thinking -- \
+  npx -y @modelcontextprotocol/server-sequential-thinking
 ```
 
----
+`codebase-memory-mcp` устанавливается общим скриптом. Откройте `/mcp` и проверьте подключения.
 
-#### ШАГ 3. Установка скиллов и плагинов
-*Загружаем правила поведения, лаконичные ответы и менеджеры процессов.*
+### Skills и плагины Claude
 
-> 💡 **При запросах в терминале выбирайте:**
-> 1. Агент: **`● Claude Code (.claude/skills)`**
-> 2. Метод установки: **`○ Symlink (Recommended)`**
+Следующие расширения предназначены только для Claude Code:
 
 ```bash
-# 3.1 Caveman (Убирает «воду» из ответов Claude)
-npx skills add JuliusBrussee/caveman
-
-# 3.2 Andrej Karpathy Skills (Правила чистого AI-кодинга)
-npx skills add multica-ai/andrej-karpathy-skills
-
-# 3.3 ClaudeForge (Плагин авто-управления и чистки CLAUDE.md)
-npx skills add alirezarezvani/ClaudeForge
+# Автоподдержка CLAUDE.md
+npx skills@latest add alirezarezvani/ClaudeForge \
+  --global --agent claude-code --skill '*' --yes
 curl -fsSL https://raw.githubusercontent.com/alirezarezvani/ClaudeForge/main/install.sh | bash
 
-# 3.4 Matt Pocock Skills (Плагин процессов разработки)
-claude plugin marketplace add mattpocock/skills
-claude plugin install mattpocock-skills@mattpocock
+# Управляемый набор процессов разработки Matt Pocock
+claude plugin install mattpocock-skills
 ```
 
----
+### Первый запуск проекта
 
-### ⚙️ ШАГ 4. Настройка нового ML-проекта
+```bash
+cd /путь/к/проекту
+claude
+```
 
-Выполняйте в папке любого вашего проекта при старте работы:
-
-1. **Создайте файл авто-синхронизации Jupyter-ноутбуков:**
-   ```bash
-   echo 'default_jupytext_formats = "ipynb,py:percent"' > jupytext.toml
-   ```
-   *(Теперь все существующие и будущие `.ipynb` в любых подпапках будут автоматически дублироваться в легкие `.py` файлы).*
-
-2. **Запустите Claude Code:**
-   ```bash
-   claude
-   ```
-
-3. **Выполните первичные команды настройки внутри Claude Code:**
-   * `/init` — сгенерирует первичный `CLAUDE.md`.
-   * `/setup-matt-pocock-skills` — настроит трекер задач (GitHub/Linear/файлы) и папку документации.
-   * `/mcp` — убедитесь, что все 3 сервера (`codebase-memory-mcp`, `fetch`, `sequential-thinking`) находятся в статусе **`✔ connected`**.
+Выполните `/init`, чтобы создать `CLAUDE.md`; затем `/mcp`. Один раз для каждого проекта запустите `/setup-matt-pocock-skills`.
 
 ---
 
-### 📋 Чек-лист проверки готовности системы
+## 3. Codex
 
-* [x] **RTK:** При вызове любых Bash-команд в консоли появляется плашка сжатия токенов.
-* [x] **Codebase Memory:** В меню `/mcp` видны функции вроде `get_architecture` и `trace_path`.
-* [x] **Fetch & Sequential Thinking:** В меню `/mcp` все 3 сервера зеленые и подключены.
-* [x] **Caveman & Karpathy Rules:** Claude отвечает лаконично, по делу и производит минимальные, аккуратные изменения.
-* [x] **ClaudeForge:** Поддерживает порядок в `CLAUDE.md`, а команда `/sync-claude-md` чистит устаревшие правила.
+### Установка и вход
+
+```bash
+npm install -g @openai/codex
+codex
+```
+
+В первом запуске завершите предложенную авторизацию.
+
+### MCP-серверы
+
+`codex mcp add` сохраняет пользовательские серверы в `~/.codex/config.toml`.
+
+```bash
+# Документация по URL
+codex mcp add fetch -- uvx mcp-server-fetch
+
+# Пошаговое планирование
+codex mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+
+# Проверка состояния серверов
+codex mcp list
+```
+
+Опционально добавьте официальный MCP документации OpenAI:
+
+```bash
+codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp
+```
+
+Если `codebase-memory-mcp` отсутствует в списке, повторите `codebase-memory-mcp install -y` после установки Codex.
+
+### Skills и инструкции
+
+Установите skill-версию Matt Pocock для Codex:
+
+```bash
+npx skills@latest add mattpocock/skills \
+  --global --agent codex --skill '*' --yes
+```
+
+В корне проекта используйте `AGENTS.md`. Команда `/init` создаёт стартовый файл, `/mcp` показывает MCP, а `/skills` — доступные skills.
+
+Codex вызывает skills через `$имя` или меню `/skills`:
+
+```text
+$setup-matt-pocock-skills
+$ask-matt Какой workflow использовать для этой задачи?
+$grill-with-docs Помоги спроектировать новую функцию
+$tdd Реализуй изменение через red-green-refactor
+$code-review Проверь текущие изменения
+```
+
+Codex также может выбрать подходящий skill автоматически по описанию задачи. Нативный плагин `mattpocock-skills` предназначен для Claude, но его Agent Skills работают в Codex.
+
+---
+
+## 4. OpenCode
+
+### Установка и подключение модели
+
+```bash
+curl -fsSL https://opencode.ai/install | bash
+opencode
+```
+
+В интерфейсе выполните `/connect`, выберите провайдера и сохраните ключ; затем используйте `/models`. Альтернатива: `npm install -g opencode-ai`.
+
+### MCP-серверы
+
+Интерактивный способ — `opencode mcp add`; проверка — `opencode mcp list`.
+
+Либо добавьте серверы в глобальный `~/.config/opencode/opencode.json` или проектный `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "fetch": {
+      "type": "local",
+      "command": ["uvx", "mcp-server-fetch"],
+      "enabled": true
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "enabled": true
+    }
+  }
+}
+```
+
+После перезапуска выполните `opencode mcp list`. Если `codebase-memory-mcp` отсутствует, повторите `codebase-memory-mcp install -y` после установки OpenCode.
+
+### Skills и инструкции
+
+OpenCode читает `.opencode/skills/`, а также совместимые `.agents/skills/` и `.claude/skills/`. Установите Matt Pocock в общий Agent Skills-каталог:
+
+```bash
+npx skills@latest add mattpocock/skills \
+  --global --agent opencode --skill '*' --yes
+```
+
+Один раз для каждого проекта вызовите `/setup-matt-pocock-skills`. Если skill не отображается в slash-меню, сформулируйте запрос явно:
+
+```text
+Use the setup-matt-pocock-skills skill and configure this repository
+Use the ask-matt skill. Какой workflow подходит для этой задачи?
+Use the tdd skill to implement this change
+Use the code-review skill to review the current diff
+```
+
+OpenCode загружает skills через встроенный инструмент `skill` и умеет выбирать их автоматически. Проверка обнаруженных skills: `opencode debug skill`. Проектные правила храните в `AGENTS.md`.
+
+> ClaudeForge не предназначен для OpenCode. Matt Pocock используется здесь как набор стандартных Agent Skills, а не как OpenCode-плагин.
+
+---
+
+## 5. Рекомендуемый workflow Matt Pocock
+
+```text
+setup-matt-pocock-skills   # один раз для репозитория
+          ↓
+ask-matt                   # выбрать подходящий процесс
+          ↓
+grill-with-docs            # уточнить требования и терминологию
+          ↓
+to-spec → to-tickets       # зафиксировать спецификацию и задачи
+          ↓
+implement → tdd            # реализация с коротким циклом обратной связи
+          ↓
+code-review                # финальная проверка изменений
+```
+
+После установки или обновления конфигурации полностью перезапустите выбранного агента.
+
+## 6. Проверка
+
+```bash
+claude plugin list
+claude mcp list
+
+codex mcp list
+
+opencode mcp list
+opencode debug skill
+
+npx skills list --global
+```
+
+Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены во всех трёх средах; Claude показывает включённый `mattpocock-skills`, а Codex/OpenCode обнаруживают Matt Skills из `~/.agents/skills/`.
+
+## Полезные ссылки
+
+- [Matt Pocock Skills](https://github.com/mattpocock/skills)
+- [Codex Skills](https://learn.chatgpt.com/docs/build-skills?surface=cli)
+- [OpenCode Agent Skills](https://opencode.ai/docs/skills)
