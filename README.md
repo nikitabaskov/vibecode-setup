@@ -300,6 +300,20 @@ claude mcp remove python-lsp
 OPENCODE_EXPERIMENTAL_LSP_TOOL=true opencode
 ```
 
+Чтобы не указывать флаг при каждом запуске, сохраните переменную окружения один раз. Для Fish:
+
+```fish
+set -Ux OPENCODE_EXPERIMENTAL_LSP_TOOL true
+```
+
+Для Bash добавьте в `~/.bashrc`:
+
+```bash
+export OPENCODE_EXPERIMENTAL_LSP_TOOL=true
+```
+
+После этого запускайте OpenCode обычной командой `opencode`. Чтобы выключить настройку в Fish, выполните `set -eU OPENCODE_EXPERIMENTAL_LSP_TOOL`.
+
 Pyright входит в список встроенных LSP-конфигураций OpenCode и активируется для `.py` и `.pyi`, когда `pyright` установлен. Без экспериментального инструмента OpenCode всё равно может использовать LSP-диагностику, но агент не получает операции перехода к определению и поиска ссылок.
 
 ### Codex
