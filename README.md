@@ -1,6 +1,6 @@
 # 🚀 Агентный стек для Claude Code, Codex и OpenCode
 
-Гайд собирает окружение для ML-инженерии и Python-разработки: поиск по коду, синхронизацию Jupyter-ноутбуков, сжатие вывода терминала, MCP-серверы и skills.
+Гайд собирает окружение для ML-инженерии и Python-разработки: поиск по коду, синхронизацию Jupyter-ноутбуков, сжатие вывода терминала, MCP-серверы и skills. Процессы разработки (spec → plan → build → test → review → ship) обеспечивает набор [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills).
 
 Можно настроить одну среду или все три. Блок «Общее окружение» выполняется один раз. Конфигурации MCP и плагины у агентов различаются — не переносите команды между ними буквально.
 
@@ -53,6 +53,15 @@ npx skills@latest add multica-ai/andrej-karpathy-skills \
   --global --agent claude-code codex opencode --skill '*' --yes
 ```
 
+Для Codex и OpenCode добавьте набор процессов разработки. Для Claude Code используйте плагин (раздел 2): он даёт ещё и slash-команды с субагентами, которые `npx skills` не устанавливает.
+
+```bash
+npx skills@latest add addyosmani/agent-skills \
+  --global --agent codex opencode --skill '*' --yes
+```
+
+> Не ставьте один и тот же набор и через `npx skills`, и через плагин в Claude Code: skills задвоятся и будут занимать контекст.
+
 В корне каждого ML-проекта создайте `jupytext.toml`:
 
 ```toml
@@ -95,9 +104,37 @@ npx skills@latest add alirezarezvani/ClaudeForge \
   --global --agent claude-code --skill '*' --yes
 curl -fsSL https://raw.githubusercontent.com/alirezarezvani/ClaudeForge/main/install.sh | bash
 
-# Управляемый набор процессов разработки Matt Pocock
-claude plugin install mattpocock-skills
 ```
+
+Процессы разработки (skills, slash-команды и субагенты) ставятся плагином. Выполните внутри Claude Code:
+
+```text
+/plugin marketplace add addyosmani/agent-skills
+/plugin install agent-skills@addy-agent-skills
+/reload-plugins
+```
+
+> Если `marketplace add` падает с `Permission denied (publickey)`, используйте HTTPS: `/plugin marketplace add https://github.com/addyosmani/agent-skills.git`.
+
+Плагин `caveman` даёт хуки (режим кратких ответов, statusline). Если вы поставили и плагин, и skills через `npx skills`, удалите задвоившиеся отдельные skills (`cavecrew`, `caveman`, `caveman-commit`, `caveman-compress`, `caveman-help`, `caveman-review`, `caveman-stats`) из `~/.agents/skills/` и `~/.claude/skills/`:
+
+```text
+/plugin marketplace add JuliusBrussee/caveman
+/plugin install caveman@caveman
+```
+
+### Личные правила и команда `/claude-md-init`
+
+Личные правила (язык ответов, caveman, Karpathy, запрет `Co-Authored-By`, приоритеты MCP, `uv`/`ruff`, маршрутизация по skills) хранятся один раз в глобальном `~/.claude/CLAUDE.md`, а не в каждом проекте. Шаблоны лежат в [templates/](templates/):
+
+```bash
+# Если файл уже есть, сначала объедините вручную. Строка @RTK.md нужна после rtk init --global.
+cp templates/global-CLAUDE.md ~/.claude/CLAUDE.md
+mkdir -p ~/.claude/commands
+cp templates/claude-md-init.md ~/.claude/commands/claude-md-init.md
+```
+
+`/claude-md-init` создаёт или обновляет проектный `CLAUDE.md` только с проектной спецификой (стек, структура, проверенные команды, запреты), без повторов личных правил.
 
 ### Первый запуск проекта
 
@@ -106,7 +143,7 @@ cd /путь/к/проекту
 claude
 ```
 
-Выполните `/init`, чтобы создать `CLAUDE.md`; затем `/mcp`. Один раз для каждого проекта запустите `/setup-matt-pocock-skills`.
+Выполните `/claude-md-init` (или `/init`), чтобы создать `CLAUDE.md`; затем `/mcp`. Для нового проекта цикл такой: `/spec` → `/plan` → `/build` → `/test` → `/code-review` → `/ship`; подробности в [agent-skills-guide.md](agent-skills-guide.md).
 
 ---
 
@@ -146,26 +183,21 @@ codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp
 
 ### Skills и инструкции
 
-Установите skill-версию Matt Pocock для Codex:
-
-```bash
-npx skills@latest add mattpocock/skills \
-  --global --agent codex --skill '*' --yes
-```
+Skills `addyosmani/agent-skills` для Codex уже установлены командой из раздела 1. Проверка: `npx skills list --global`.
 
 В корне проекта используйте `AGENTS.md`. Команда `/init` создаёт стартовый файл, `/mcp` показывает MCP, а `/skills` — доступные skills.
 
 Codex вызывает skills через `$имя` или меню `/skills`:
 
 ```text
-$setup-matt-pocock-skills
-$ask-matt Какой workflow использовать для этой задачи?
-$grill-with-docs Помоги спроектировать новую функцию
-$tdd Реализуй изменение через red-green-refactor
-$code-review Проверь текущие изменения
+$interview-me Помоги уточнить требования к новой функции
+$spec-driven-development Напиши спецификацию до кода
+$planning-and-task-breakdown Разбей спецификацию на задачи
+$test-driven-development Реализуй изменение через red-green-refactor
+$code-review-and-quality Проверь текущие изменения
 ```
 
-Codex также может выбрать подходящий skill автоматически по описанию задачи. Нативный плагин `mattpocock-skills` предназначен для Claude, но его Agent Skills работают в Codex.
+Codex также может выбрать подходящий skill автоматически по описанию задачи. Slash-команды `/spec`, `/plan` и т.п. есть только в Claude Code.
 
 ---
 
@@ -208,25 +240,18 @@ opencode
 
 ### Skills и инструкции
 
-OpenCode читает `.opencode/skills/`, а также совместимые `.agents/skills/` и `.claude/skills/`. Установите Matt Pocock в общий Agent Skills-каталог:
-
-```bash
-npx skills@latest add mattpocock/skills \
-  --global --agent opencode --skill '*' --yes
-```
-
-Один раз для каждого проекта вызовите `/setup-matt-pocock-skills`. Если skill не отображается в slash-меню, сформулируйте запрос явно:
+OpenCode читает `.opencode/skills/`, а также совместимые `.agents/skills/` и `.claude/skills/`. Skills `addyosmani/agent-skills` для OpenCode уже установлены командой из раздела 1 в общий Agent Skills-каталог `~/.agents/skills/`. Если skill не отображается в slash-меню, сформулируйте запрос явно:
 
 ```text
-Use the setup-matt-pocock-skills skill and configure this repository
-Use the ask-matt skill. Какой workflow подходит для этой задачи?
-Use the tdd skill to implement this change
-Use the code-review skill to review the current diff
+Use the spec-driven-development skill to write a spec for this feature
+Use the planning-and-task-breakdown skill to split the spec into tasks
+Use the test-driven-development skill to implement this change
+Use the code-review-and-quality skill to review the current diff
 ```
 
 OpenCode загружает skills через встроенный инструмент `skill` и умеет выбирать их автоматически. Проверка обнаруженных skills: `opencode debug skill`. Проектные правила храните в `AGENTS.md`.
 
-> ClaudeForge не предназначен для OpenCode. Matt Pocock используется здесь как набор стандартных Agent Skills, а не как OpenCode-плагин.
+> ClaudeForge не предназначен для OpenCode. agent-skills используется здесь как набор стандартных Agent Skills, а не как OpenCode-плагин.
 
 ---
 
@@ -326,21 +351,23 @@ Pyright входит в список встроенных LSP-конфигура
 
 ---
 
-## 6. Рекомендуемый workflow Matt Pocock
+## 6. Рекомендуемый workflow (agent-skills)
 
 ```text
-setup-matt-pocock-skills   # один раз для репозитория
-          ↓
-ask-matt                   # выбрать подходящий процесс
-          ↓
-grill-with-docs            # уточнить требования и терминологию
-          ↓
-to-spec → to-tickets       # зафиксировать спецификацию и задачи
-          ↓
-implement → tdd            # реализация с коротким циклом обратной связи
-          ↓
-code-review                # финальная проверка изменений
+/spec          # уточнить требования, написать спецификацию до кода
+   ↓
+/plan          # разбить на маленькие задачи с критериями приёмки
+   ↓
+/build         # реализовать по задачам (/build auto — весь план за раз)
+   ↓
+/test          # TDD; для бага сначала падающий тест (Prove-It)
+   ↓
+/code-review   # встроенный: поиск багов; /review — архитектура и читаемость
+   ↓
+/ship          # чеклист перед релизом, решение go/no-go
 ```
+
+Slash-команды доступны в Claude Code через плагин. В Codex и OpenCode вызывайте те же процессы через skills: `spec-driven-development`, `planning-and-task-breakdown`, `incremental-implementation`, `test-driven-development`, `code-review-and-quality`, `shipping-and-launch`. Когда что использовать: [agent-skills-guide.md](agent-skills-guide.md).
 
 После установки или обновления конфигурации полностью перезапустите выбранного агента.
 
@@ -358,10 +385,10 @@ opencode debug skill
 npx skills list --global
 ```
 
-Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены во всех трёх средах; Claude показывает включённый `mattpocock-skills`, а Codex/OpenCode обнаруживают Matt Skills из `~/.agents/skills/`.
+Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены во всех трёх средах; Claude показывает включённые `agent-skills` и `caveman`, а Codex/OpenCode обнаруживают skills из `~/.agents/skills/`.
 
 ## Полезные ссылки
 
-- [Matt Pocock Skills](https://github.com/mattpocock/skills)
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [Codex Skills](https://learn.chatgpt.com/docs/build-skills?surface=cli)
 - [OpenCode Agent Skills](https://opencode.ai/docs/skills)

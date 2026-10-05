@@ -3,7 +3,12 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "command": "ruff check --fix . && ruff format ."
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ruff check --fix . && ruff format ."
+          }
+        ]
       }
     ]
   }
