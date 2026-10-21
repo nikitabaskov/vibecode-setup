@@ -46,4 +46,4 @@
 /spec → /plan → /build → /test → /code-review → /review → /ship
 ```
 
-Личные правила (язык, caveman, коммиты, приоритеты MCP) лежат в глобальном `~/.claude/CLAUDE.md`, шаблон: [templates/global-CLAUDE.md](templates/global-CLAUDE.md).
+Личные правила зависят от среды: Claude Code использует `~/.claude/CLAUDE.md`, Codex — `~/.codex/AGENTS.md`, OpenCode — `~/.config/opencode/AGENTS.md`. Шаблоны: [Claude](templates/claude/), [Codex/OpenCode](templates/codex-opencode/).

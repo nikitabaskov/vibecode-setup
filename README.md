@@ -10,7 +10,9 @@
 | Codex | `codex` | `AGENTS.md` | `.agents/skills/` |
 | OpenCode | `opencode` | `AGENTS.md` | `.opencode/skills/` или `.agents/skills/` |
 
-> OpenCode автоматически читает `.agents/skills/`. Это удобное общее расположение skills для Codex и OpenCode; Claude Code использует `.claude/skills/`.
+> `.agents/skills/` — общее расположение skills для Codex и OpenCode. Проектные skills также можно хранить в `.opencode/skills/`.
+
+Шаблоны разделены по средам в `templates/`: `templates/claude/` и `templates/codex-opencode/`. Codex/OpenCode-шаблоны не используют Claude-плагины, `CLAUDE.md` или Claude slash-команды.
 
 ---
 
@@ -129,9 +131,9 @@ curl -fsSL https://raw.githubusercontent.com/alirezarezvani/ClaudeForge/main/ins
 
 ```bash
 # Если файл уже есть, сначала объедините вручную. Строка @RTK.md нужна после rtk init --global.
-cp templates/global-CLAUDE.md ~/.claude/CLAUDE.md
+cp templates/claude/global-CLAUDE.md ~/.claude/CLAUDE.md
 mkdir -p ~/.claude/commands
-cp templates/claude-md-init.md ~/.claude/commands/claude-md-init.md
+cp templates/claude/claude-md-init.md ~/.claude/commands/claude-md-init.md
 ```
 
 `/claude-md-init` создаёт или обновляет проектный `CLAUDE.md` только с проектной спецификой (стек, структура, проверенные команды, запреты), без повторов личных правил.
@@ -199,6 +201,20 @@ $code-review-and-quality Проверь текущие изменения
 
 Codex также может выбрать подходящий skill автоматически по описанию задачи. Slash-команды `/spec`, `/plan` и т.п. есть только в Claude Code.
 
+### Установка шаблонов из этого репозитория
+
+Выполните из корня этого репозитория:
+
+```bash
+mkdir -p ~/.codex/skills/agent-md-init
+cp templates/codex-opencode/agent-md-init/SKILL.md ~/.codex/skills/agent-md-init/SKILL.md
+cp templates/codex-opencode/global-AGENTS.md ~/.codex/AGENTS.md
+```
+
+Если `~/.codex/AGENTS.md` уже существует, объедините файлы вручную. Не перезаписывайте личные правила.
+
+Запуск skill: `$agent-md-init Создай или обнови AGENTS.md этого проекта`.
+
 ---
 
 ## 4. OpenCode
@@ -249,9 +265,21 @@ Use the test-driven-development skill to implement this change
 Use the code-review-and-quality skill to review the current diff
 ```
 
-OpenCode загружает skills через встроенный инструмент `skill` и умеет выбирать их автоматически. Проверка обнаруженных skills: `opencode debug skill`. Проектные правила храните в `AGENTS.md`.
+OpenCode загружает skills через встроенный инструмент `skill` и умеет выбирать их автоматически. В версии OpenCode `2.x` отдельной команды `opencode debug skill` нет; проверяйте наличие файлов через `find ~/.agents/skills -name SKILL.md`. Проектные правила храните в `AGENTS.md`.
 
 > ClaudeForge не предназначен для OpenCode. agent-skills используется здесь как набор стандартных Agent Skills, а не как OpenCode-плагин.
+
+### Установка шаблонов из этого репозитория
+
+Выполните из корня этого репозитория:
+
+```bash
+mkdir -p ~/.agents/skills/agent-md-init ~/.config/opencode
+cp templates/codex-opencode/agent-md-init/SKILL.md ~/.agents/skills/agent-md-init/SKILL.md
+cp templates/codex-opencode/global-AGENTS.md ~/.config/opencode/AGENTS.md
+```
+
+Если `~/.config/opencode/AGENTS.md` уже существует, объедините файлы вручную. Перезапустите OpenCode. В запросе используйте: `Use the agent-md-init skill to create or update this project's AGENTS.md`.
 
 ---
 
@@ -380,12 +408,22 @@ claude mcp list
 codex mcp list
 
 opencode mcp list
-opencode debug skill
+find ~/.agents/skills -name SKILL.md -print
 
 npx skills list --global
+
+test -f ~/.codex/AGENTS.md
+test -f ~/.codex/skills/agent-md-init/SKILL.md
+test -f ~/.config/opencode/AGENTS.md
+test -f ~/.agents/skills/agent-md-init/SKILL.md
+command -v jupytext
+command -v ast-grep
+command -v rtk
+command -v codebase-memory-mcp
+command -v pyright
 ```
 
-Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены во всех трёх средах; Claude показывает включённые `agent-skills` и `caveman`, а Codex/OpenCode обнаруживают skills из `~/.agents/skills/`.
+Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены в выбранных средах; Codex видит skills из `~/.codex/skills/`, OpenCode — из `~/.agents/skills/`; `jupytext`, `ast-grep`, `rtk`, `codebase-memory-mcp` и `pyright` доступны в `PATH`. Команды `command -v` с ненулевым кодом означают, что компонент не установлен.
 
 ## Полезные ссылки
 
