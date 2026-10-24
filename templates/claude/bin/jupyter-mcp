@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Включает/выключает jupyter MCP только для текущего проекта (local scope в ~/.claude.json).
+# Использование: jupyter-mcp on|off|status  (из папки проекта), затем перезапустить сессию Claude Code.
+set -euo pipefail
+source ~/.config/jupyter-mcp/env
+case "${1:-status}" in
+  on)  claude mcp add jupyter -s local \
+         -e JUPYTER_URL="$JUPYTER_URL" \
+         -e JUPYTER_TOKEN="$JUPYTER_TOKEN" \
+         -e ALLOW_IMG_OUTPUT=true \
+         -- uvx jupyter-mcp-server@latest ;;
+  off) claude mcp remove jupyter -s local ;;
+  status) claude mcp get jupyter || true ;;
+  *) echo "usage: jupyter-mcp on|off|status" >&2; exit 2 ;;
+esac
