@@ -84,7 +84,7 @@ jq -s '.[0] as $a | .[1] as $b
 
 | Часть | Назначение |
 | --- | --- |
-| `global-CLAUDE.md` | личные правила: русский язык ответов, Karpathy, git и коммиты, безопасность, экономия контекста, маршрутизация по skills, актуальность CLAUDE.md |
+| `global-CLAUDE.md` | личные правила: русский язык ответов, Karpathy, git и коммиты, безопасность, экономия контекста, актуальность CLAUDE.md |
 | `commands/` | `/spec`, `/plan`, `/build`, `/test`, `/review`, `/ship`, `/constraints`, `/code-simplify`, `/claude-md-init` |
 | `personas/` | ревьюеры для `/ship`; лежат вне `agents/`, поэтому не занимают контекст до вызова |
 | `hooks/ruff-format.sh` | после правки `.py` запускает `ruff check --fix` и `ruff format` только для этого файла. Неотформатированный legacy-код не трогает, Claude получает только новые ошибки lint |

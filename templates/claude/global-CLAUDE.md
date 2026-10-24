@@ -33,6 +33,7 @@
 ## Tool routing
 - Unsure about a library or framework API: fetch current docs via Fetch MCP, do not guess.
 - Any chart, plot, or dashboard: load skill `dataviz` first.
+- Bug with unclear cause: skill `investigate-first` before editing.
 
 ## Context economy
 - Search (`rg`, Grep) before reading. Large files: Read with offset/limit, never whole.
@@ -45,13 +46,6 @@
 - Python: ALWAYS `uv` (`uv sync`, `uv run ...`), never bare `pip`/`python`. Edited `.py` files get `ruff check --fix` + `ruff format` automatically by a hook; fix only the errors it reports.
 - JS/TS: use the package manager matching the lockfile. After edits run lint, format, typecheck/build.
 - Tests: while fixing, run only the failing test; the full fast suite once before reporting done. Never auto-run GPU, e2e, or heavy tests.
-
-## Skill routing
-- New feature or vague requirements: `/spec` -> `/plan` -> `/build` (`/build auto` for the whole plan).
-- Bug: `/test` (failing test first); unclear cause: skill `investigate-first`.
-- Before merge: `/code-review` (bugs), `/review` (architecture, readability), `/security-review` (auth, uploads, input).
-- Cleanup: `/code-simplify`. Release: `/ship`. Quality bar: `/constraints`.
-- Schema/DB changes: skill `migration`. Design decisions: skill `documentation-and-adrs`.
 
 ## Keeping CLAUDE.md current
 - After every change: if it made anything in a CLAUDE.md outdated (commands, paths, structure, tools, workflow), update that CLAUDE.md in the same change.

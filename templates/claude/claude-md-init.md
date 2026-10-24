@@ -4,7 +4,7 @@ description: Create or update a project CLAUDE.md (project-specific only; person
 
 Analyze this repository and create or UPDATE its CLAUDE.md IN PLACE. Never create a duplicate; if several CLAUDE.md files exist, merge them into the root one and delete stale ones. Write IN ENGLISH, 40-80 lines, concise: the file is loaded into every request. Keep still-correct existing content, drop anything stale.
 
-Personal rules (language, Karpathy, commits, tool routing, context economy, skill routing, uv/ruff defaults, CLAUDE.md upkeep) already live in ~/.claude/CLAUDE.md. Do NOT repeat them. Include only what is specific to this project, plus overrides of the global rules where this repo differs (for example a fixed comment language, or a different package manager).
+Personal rules (language, Karpathy, commits, tool routing, context economy, uv/ruff defaults, CLAUDE.md upkeep) already live in ~/.claude/CLAUDE.md. Do NOT repeat them. Include only what is specific to this project, plus overrides of the global rules where this repo differs (for example a fixed comment language, or a different package manager).
 
 Step 1: detect before writing. Languages, package managers (by lockfiles), frameworks, test runners, linters, CI, Docker, DB/migrations. Verify EVERY command and path against the repo before writing it; never invent commands.
 
