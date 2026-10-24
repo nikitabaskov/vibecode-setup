@@ -6,12 +6,12 @@
 
 | Среда | Команда |
 | --- | --- |
-| Claude Code (skills + команды + субагенты) | `/plugin marketplace add addyosmani/agent-skills`, затем `/plugin install agent-skills@addy-agent-skills` |
-| Codex, OpenCode | `npx skills@latest add addyosmani/agent-skills --global --agent codex opencode --skill '*' --yes` |
+| Все три среды (skills) | `npx skills@latest add addyosmani/agent-skills --global --agent claude-code codex opencode --skill '*' --yes` |
+| Claude Code (slash-команды и персоны) | `cp templates/claude/commands/*.md ~/.claude/commands/` и `cp templates/claude/personas/*.md ~/.claude/personas/` |
 
-> `npx skills` ставит только skills. Slash-команды (`/spec`, `/plan`…) и субагенты (`code-reviewer`, `security-auditor`, `test-engineer`, `web-performance-auditor`) приходят только с плагином. Без субагентов `/ship` и `/webperf` не работают.
+> `npx skills` ставит только skills. Slash-команды (`/spec`, `/plan`…) и персоны для `/ship` (`code-reviewer`, `security-auditor`, `test-engineer`) лежат в [templates/claude/](templates/claude/). Персоны хранятся вне `~/.claude/agents/`, поэтому не занимают контекст, пока не запущен `/ship`.
 
-После установки перезапустите агента: skills, команды и агенты подхватываются только при старте.
+После установки перезапустите агента: skills и команды подхватываются только при старте.
 
 ## Slash-команды (Claude Code)
 
@@ -23,21 +23,20 @@
 | `/test` | TDD. Для бага сначала падающий тест, доказывающий его (Prove-It) |
 | `/review` | Ревью по пяти осям: корректность, читаемость, архитектура, безопасность, производительность |
 | `/code-simplify` | Код работает, но запутан |
-| `/ship` | Чеклист перед релизом, параллельный опрос субагентов, решение go/no-go |
+| `/ship` | Чеклист перед релизом, параллельный опрос трёх персон, решение go/no-go |
 | `/constraints` | Один раз на проект: записывает планку качества в `CONSTRAINTS.md` и следит, чтобы агент её не снижал |
-| `/webperf` | Аудит производительности фронтенда |
 
 ## Skills, которые подхватываются сами
 
-`debugging-and-error-recovery`, `security-and-hardening` (auth, ввод), `deprecation-and-migration` (миграции БД), `performance-optimization`, `api-and-interface-design`, `frontend-ui-engineering`, `documentation-and-adrs`, `git-workflow-and-versioning`, `doubt-driven-development` (рискованные изменения), `interview-me` и `idea-refine` (сырая идея), `context-engineering`, `using-agent-skills` (мета-skill).
+В Claude Code включены: `debugging-and-error-recovery`, `investigate-first`, `security-and-hardening` (auth, ввод), `migration` (схемы и данные), `performance-optimization`, `documentation-and-adrs`, `doubt-driven-development` (рискованные изменения), а также skills, на которые опираются команды: `spec-driven-development`, `planning-and-task-breakdown`, `incremental-implementation`, `test-driven-development`, `code-review-and-quality`, `code-simplification`, `constraint-driven-development`, `shipping-and-launch`. Остальные выключены через `skillOverrides` в [templates/claude/settings.json](templates/claude/settings.json): за месяц они не использовались ни разу.
 
-В Codex и OpenCode вызывайте их по имени (`$имя` или «Use the … skill»).
+В Codex и OpenCode вызывайте skills по имени (`$имя` или «Use the … skill»).
 
 ## Какой инструмент выбрать
 
 - **Ревью:** `/code-review` (встроенный) ищет баги в диффе; `/review` смотрит архитектуру и читаемость; `/security-review` (встроенный) для auth, загрузок, ввода.
-- **Упрощение:** `/simplify` (встроенный) чистит текущий дифф; `/code-simplify` упрощает существующий код.
-- **Баг с неясной причиной:** сначала `investigate-first` или `debugging-and-error-recovery`; если место известно, `surgical-patch`.
+- **Упрощение:** `/code-simplify` упрощает существующий код.
+- **Баг с неясной причиной:** сначала `investigate-first` или `debugging-and-error-recovery`.
 - **Качество:** `/constraints` один раз, дальше ссылка `@CONSTRAINTS.md` в `CLAUDE.md`.
 
 ## Типовой цикл

@@ -1,68 +1,46 @@
 # 🚀 Агентный стек для Claude Code, Codex и OpenCode
 
-Гайд собирает окружение для ML-инженерии и Python-разработки: поиск по коду, синхронизацию Jupyter-ноутбуков, сжатие вывода терминала, MCP-серверы и skills. Процессы разработки (spec → plan → build → test → review → ship) обеспечивает набор [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills).
+Окружение для ML и Python-разработки: процессы разработки из [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (spec → plan → build → test → review → ship), сжатие вывода терминала (RTK), автоформатирование, минимум MCP.
 
-Можно настроить одну среду или все три. Блок «Общее окружение» выполняется один раз. Конфигурации MCP и плагины у агентов различаются — не переносите команды между ними буквально.
+Главный принцип — **минимум постоянного контекста**. Описания каждого skill, MCP-инструмента и агента попадают в каждый запрос. Поэтому установлено только то, что реально используется, а редкие вещи вызываются вручную.
 
-| Среда | Запуск | Инструкции проекта | Skills |
+| Среда | Инструкции | Skills | Шаблоны |
 | --- | --- | --- | --- |
-| Claude Code | `claude` | `CLAUDE.md` | `.claude/skills/` |
-| Codex | `codex` | `AGENTS.md` | `.agents/skills/` |
-| OpenCode | `opencode` | `AGENTS.md` | `.opencode/skills/` или `.agents/skills/` |
+| Claude Code | `~/.claude/CLAUDE.md`, `CLAUDE.md` проекта | `~/.claude/skills/` | [templates/claude/](templates/claude/) |
+| Codex | `~/.codex/AGENTS.md`, `AGENTS.md` проекта | `~/.agents/skills/`, `~/.codex/skills/` | [templates/codex-opencode/](templates/codex-opencode/) |
+| OpenCode | `~/.config/opencode/AGENTS.md`, `AGENTS.md` проекта | `~/.agents/skills/` | [templates/codex-opencode/](templates/codex-opencode/) |
 
-> `.agents/skills/` — общее расположение skills для Codex и OpenCode. Проектные skills также можно хранить в `.opencode/skills/`.
-
-Шаблоны разделены по средам в `templates/`: `templates/claude/` и `templates/codex-opencode/`. Codex/OpenCode-шаблоны не используют Claude-плагины, `CLAUDE.md` или Claude slash-команды.
+Все команды ниже выполняются из корня этого репозитория.
 
 ---
 
-## 1. Общее окружение
+## 1. Общие инструменты
 
-Сначала установите базовые CLI-инструменты:
+Нужны `uv`, `jq`, `git` и Node.js 22+.
 
 ```bash
-# Поиск по AST и текстовые представления Jupyter-ноутбуков
-uv tool install jupytext
-uv tool install ast-grep-cli
+uv tool install jupytext       # ноутбуки ⇄ .py (для ML-проектов)
+uv tool install ast-grep-cli   # структурный поиск и рефакторинг: sg
+npm install -g pyright         # проверка типов Python
 
-# RTK — сжатие вывода команд для экономии контекста
+# RTK — сжимает вывод команд в контексте агента
 curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-
-# Граф памяти кодовой базы
-curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
-codebase-memory-mcp config set auto_index true
 ```
 
-Установите нужные среды по разделам 2–4, затем вернитесь сюда и подключите RTK и Codebase Memory. Для полного стека выполните все команды:
+Каталог глобальных npm-пакетов должен быть в `PATH`, иначе `pyright` и `codex` не найдутся:
 
 ```bash
-# RTK
-rtk init --global
-rtk init --global --codex
-rtk init --global --opencode
-
-# Установщик автоматически обнаруживает поддерживаемых агентов
-codebase-memory-mcp install -y
+echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.zshrc   # для fish: fish_add_path (npm prefix -g)/bin
 ```
 
-Установите общие skills сразу для всех трёх сред:
-
-```bash
-npx skills@latest add JuliusBrussee/caveman \
-  --global --agent claude-code codex opencode --skill '*' --yes
-
-npx skills@latest add multica-ai/andrej-karpathy-skills \
-  --global --agent claude-code codex opencode --skill '*' --yes
-```
-
-Для Codex и OpenCode добавьте набор процессов разработки. Для Claude Code используйте плагин (раздел 2): он даёт ещё и slash-команды с субагентами, которые `npx skills` не устанавливает.
+Skills ставятся один раз для всех сред, в общий каталог:
 
 ```bash
 npx skills@latest add addyosmani/agent-skills \
-  --global --agent codex opencode --skill '*' --yes
+  --global --agent claude-code codex opencode --skill '*' --yes
+npx skills@latest add multica-ai/andrej-karpathy-skills \
+  --global --agent claude-code codex opencode --skill '*' --yes
 ```
-
-> Не ставьте один и тот же набор и через `npx skills`, и через плагин в Claude Code: skills задвоятся и будут занимать контекст.
 
 В корне каждого ML-проекта создайте `jupytext.toml`:
 
@@ -74,359 +52,159 @@ default_jupytext_formats = "ipynb,py:percent"
 
 ## 2. Claude Code
 
-### Установка и вход
+### Установка
 
 ```bash
-npm install -g @anthropic-ai/claude-code
-claude
-```
-
-Завершите авторизацию в первом запуске. Проверка установки: `claude doctor`.
-
-### MCP-серверы
-
-```bash
-# Документация по URL
+curl -fsSL https://claude.ai/install.sh | bash
+claude            # вход в аккаунт
+rtk init --global # хук RTK и @RTK.md
 claude mcp add --scope user fetch -- uvx mcp-server-fetch
-
-# Пошаговое планирование
-claude mcp add --scope user sequential-thinking -- \
-  npx -y @modelcontextprotocol/server-sequential-thinking
 ```
 
-`codebase-memory-mcp` устанавливается общим скриптом. Откройте `/mcp` и проверьте подключения.
-
-### Skills и плагины Claude
-
-Следующие расширения предназначены только для Claude Code:
+### Конфигурация из шаблонов
 
 ```bash
-# Автоподдержка CLAUDE.md
-npx skills@latest add alirezarezvani/ClaudeForge \
-  --global --agent claude-code --skill '*' --yes
-curl -fsSL https://raw.githubusercontent.com/alirezarezvani/ClaudeForge/main/install.sh | bash
+mkdir -p ~/.claude/{commands,personas,hooks}
+cp templates/claude/global-CLAUDE.md ~/.claude/CLAUDE.md   # если файл уже есть, объедините вручную
+cp templates/claude/claude-md-init.md templates/claude/commands/*.md ~/.claude/commands/
+cp templates/claude/personas/*.md ~/.claude/personas/
+cp templates/claude/hooks/ruff-format.sh ~/.claude/hooks/ && chmod +x ~/.claude/hooks/ruff-format.sh
 
+# Объединить settings.json, сохранив существующие хуки (например, RTK)
+jq -s '.[0] as $a | .[1] as $b
+  | ($a * ($b | del(.hooks, .permissions)))
+  | .hooks.PreToolUse  = (($a.hooks.PreToolUse  // []) + $b.hooks.PreToolUse)
+  | .hooks.PostToolUse = (($a.hooks.PostToolUse // []) + $b.hooks.PostToolUse)
+  | .permissions.deny  = ((($a.permissions.deny // []) + $b.permissions.deny) | unique)' \
+  ~/.claude/settings.json templates/claude/settings.json > /tmp/settings.json \
+  && mv /tmp/settings.json ~/.claude/settings.json
 ```
 
-Процессы разработки (skills, slash-команды и субагенты) ставятся плагином. Выполните внутри Claude Code:
+Что даёт каждая часть:
+
+| Часть | Назначение |
+| --- | --- |
+| `global-CLAUDE.md` | личные правила: русский язык ответов, Karpathy, git и коммиты, безопасность, экономия контекста, маршрутизация по skills, актуальность CLAUDE.md |
+| `commands/` | `/spec`, `/plan`, `/build`, `/test`, `/review`, `/ship`, `/constraints`, `/code-simplify`, `/claude-md-init` |
+| `personas/` | ревьюеры для `/ship`; лежат вне `agents/`, поэтому не занимают контекст до вызова |
+| `hooks/ruff-format.sh` | после правки `.py` запускает `ruff check --fix` и `ruff format` только для этого файла. Неотформатированный legacy-код не трогает, Claude получает только новые ошибки lint |
+| `settings.json` | `attribution: false` (без `Co-Authored-By`); `skillOverrides` (неиспользуемые skills выключены, команды доступны только через `/`); запрет Read для `.env` |
+
+Опционально:
+
+```bash
+# Jupyter MCP включается только в нужном проекте
+cp templates/claude/bin/jupyter-mcp ~/.local/bin/ && chmod +x ~/.local/bin/jupyter-mcp
+mkdir -p ~/.config/jupyter-mcp
+printf 'JUPYTER_URL=http://localhost:8888\nJUPYTER_TOKEN=<токен>\n' > ~/.config/jupyter-mcp/env
+chmod 600 ~/.config/jupyter-mcp/env
+# в папке проекта: jupyter-mcp on | off | status, затем перезапуск Claude Code
+```
 
 ```text
-/plugin marketplace add addyosmani/agent-skills
-/plugin install agent-skills@addy-agent-skills
-/reload-plugins
+# Pyright LSP: переход к определению и поиск ссылок
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
 ```
 
-> Если `marketplace add` падает с `Permission denied (publickey)`, используйте HTTPS: `/plugin marketplace add https://github.com/addyosmani/agent-skills.git`.
+Статуслайн: `npm install -g ccstatusline`, затем в `settings.json` укажите `"statusLine": {"type": "command", "command": "ccstatusline"}`.
 
-Плагин `caveman` даёт хуки (режим кратких ответов, statusline). Если вы поставили и плагин, и skills через `npx skills`, удалите задвоившиеся отдельные skills (`cavecrew`, `caveman`, `caveman-commit`, `caveman-compress`, `caveman-help`, `caveman-review`, `caveman-stats`) из `~/.agents/skills/` и `~/.claude/skills/`:
-
-```text
-/plugin marketplace add JuliusBrussee/caveman
-/plugin install caveman@caveman
-```
-
-### Личные правила и команда `/claude-md-init`
-
-Личные правила (язык ответов, caveman, Karpathy, запрет `Co-Authored-By`, приоритеты MCP, `uv`/`ruff`, маршрутизация по skills) хранятся один раз в глобальном `~/.claude/CLAUDE.md`, а не в каждом проекте. Шаблоны лежат в [templates/](templates/):
+### Проект
 
 ```bash
-# Если файл уже есть, сначала объедините вручную. Строка @RTK.md нужна после rtk init --global.
-cp templates/claude/global-CLAUDE.md ~/.claude/CLAUDE.md
-mkdir -p ~/.claude/commands
-cp templates/claude/claude-md-init.md ~/.claude/commands/claude-md-init.md
+cd /путь/к/проекту && claude
 ```
 
-`/claude-md-init` создаёт или обновляет проектный `CLAUDE.md` только с проектной спецификой (стек, структура, проверенные команды, запреты), без повторов личных правил.
+`/claude-md-init` создаёт проектный `CLAUDE.md` на 40–80 строк: стек, карта кода, проверенные команды, запуск одного теста, что не читать. Дальше работа по циклу `/spec → /plan → /build → /test → /code-review → /ship` (см. [agent-skills-guide.md](agent-skills-guide.md)).
 
-### Первый запуск проекта
+Коммиты по умолчанию делаете вы: после каждого атомарного изменения Claude даёт готовую команду `git add … && git commit …`. Чтобы разрешить ему коммитить самому, добавьте в `CLAUDE.md` проекта строку `Auto-commit: allowed`.
 
-```bash
-cd /путь/к/проекту
-claude
-```
+### Что сознательно не ставится
 
-Выполните `/claude-md-init` (или `/init`), чтобы создать `CLAUDE.md`; затем `/mcp`. Для нового проекта цикл такой: `/spec` → `/plan` → `/build` → `/test` → `/code-review` → `/ship`; подробности в [agent-skills-guide.md](agent-skills-guide.md).
+| Инструмент | Почему |
+| --- | --- |
+| `codebase-memory-mcp` | за месяц 1 вызов; 17 инструментов и 7 хуков в каждом запросе |
+| `sequential-thinking` MCP | 1 вызов за месяц; у модели есть собственное thinking |
+| `caveman` | экономит 1–2% расхода: текст ответов — около 10% output |
+| плагин agent-skills | его 4 агента попадают в каждый запрос, а `skillOverrides` на skills плагина не действуют |
+| ClaudeForge | его skill работает на `haiku`, правила противоречат `/claude-md-init` |
+| `includeGitInstructions: false` | экономит лишь 300–500 токенов на запрос |
+
+### Экономия токенов
+
+Около 80% расхода — это контекст, который заново отправляется с каждым запросом.
+- `/clear` при смене задачи: одна задача — одна сессия.
+- Effort `medium` по умолчанию; `/effort high` + `s` — только на текущую сессию, для сложных багов.
+- После перерыва больше часа кеш истекает. Лучше новая сессия с коротким резюме.
+- `/model sonnet` для рутины.
+- В DS-проектах запретите чтение данных: `"permissions": {"deny": ["Read(./data/**)"]}` в `.claude/settings.json` проекта.
+- Раз в неделю смотрите `/usage`.
 
 ---
 
 ## 3. Codex
 
-### Установка и вход
-
 ```bash
 npm install -g @openai/codex
-codex
-```
-
-В первом запуске завершите предложенную авторизацию.
-
-### MCP-серверы
-
-`codex mcp add` сохраняет пользовательские серверы в `~/.codex/config.toml`.
-
-```bash
-# Документация по URL
+codex                       # вход
+rtk init --global --codex
 codex mcp add fetch -- uvx mcp-server-fetch
 
-# Пошаговое планирование
-codex mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-
-# Проверка состояния серверов
-codex mcp list
-```
-
-Опционально добавьте официальный MCP документации OpenAI:
-
-```bash
-codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp
-```
-
-Если `codebase-memory-mcp` отсутствует в списке, повторите `codebase-memory-mcp install -y` после установки Codex.
-
-### Skills и инструкции
-
-Skills `addyosmani/agent-skills` для Codex уже установлены командой из раздела 1. Проверка: `npx skills list --global`.
-
-В корне проекта используйте `AGENTS.md`. Команда `/init` создаёт стартовый файл, `/mcp` показывает MCP, а `/skills` — доступные skills.
-
-Codex вызывает skills через `$имя` или меню `/skills`:
-
-```text
-$interview-me Помоги уточнить требования к новой функции
-$spec-driven-development Напиши спецификацию до кода
-$planning-and-task-breakdown Разбей спецификацию на задачи
-$test-driven-development Реализуй изменение через red-green-refactor
-$code-review-and-quality Проверь текущие изменения
-```
-
-Codex также может выбрать подходящий skill автоматически по описанию задачи. Slash-команды `/spec`, `/plan` и т.п. есть только в Claude Code.
-
-### Установка шаблонов из этого репозитория
-
-Выполните из корня этого репозитория:
-
-```bash
 mkdir -p ~/.codex/skills/agent-md-init
-cp templates/codex-opencode/agent-md-init/SKILL.md ~/.codex/skills/agent-md-init/SKILL.md
-cp templates/codex-opencode/global-AGENTS.md ~/.codex/AGENTS.md
+cp templates/codex-opencode/agent-md-init/SKILL.md ~/.codex/skills/agent-md-init/
+cp templates/codex-opencode/global-AGENTS.md ~/.codex/AGENTS.md   # если файл уже есть, объедините вручную
 ```
 
-Если `~/.codex/AGENTS.md` уже существует, объедините файлы вручную. Не перезаписывайте личные правила.
-
-Запуск skill: `$agent-md-init Создай или обнови AGENTS.md этого проекта`.
-
----
+Skills вызываются через `$имя` или меню `/skills`. Файл `AGENTS.md` проекта создаётся командой `$agent-md-init`.
 
 ## 4. OpenCode
 
-### Установка и подключение модели
-
 ```bash
 curl -fsSL https://opencode.ai/install | bash
-opencode
+opencode                    # /connect — выбрать провайдера
+rtk init --global --opencode
+
+mkdir -p ~/.agents/skills/agent-md-init ~/.config/opencode
+cp templates/codex-opencode/agent-md-init/SKILL.md ~/.agents/skills/agent-md-init/
+cp templates/codex-opencode/global-AGENTS.md ~/.config/opencode/AGENTS.md
 ```
 
-В интерфейсе выполните `/connect`, выберите провайдера и сохраните ключ; затем используйте `/models`. Альтернатива: `npm install -g opencode-ai`.
-
-### MCP-серверы
-
-Интерактивный способ — `opencode mcp add`; проверка — `opencode mcp list`.
-
-Либо добавьте серверы в глобальный `~/.config/opencode/opencode.json` или проектный `opencode.json`:
+MCP и LSP задаются в `~/.config/opencode/opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "fetch": {
-      "type": "local",
-      "command": ["uvx", "mcp-server-fetch"],
-      "enabled": true
-    },
-    "sequential-thinking": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "enabled": true
-    }
-  }
-}
-```
-
-После перезапуска выполните `opencode mcp list`. Если `codebase-memory-mcp` отсутствует, повторите `codebase-memory-mcp install -y` после установки OpenCode.
-
-### Skills и инструкции
-
-OpenCode читает `.opencode/skills/`, а также совместимые `.agents/skills/` и `.claude/skills/`. Skills `addyosmani/agent-skills` для OpenCode уже установлены командой из раздела 1 в общий Agent Skills-каталог `~/.agents/skills/`. Если skill не отображается в slash-меню, сформулируйте запрос явно:
-
-```text
-Use the spec-driven-development skill to write a spec for this feature
-Use the planning-and-task-breakdown skill to split the spec into tasks
-Use the test-driven-development skill to implement this change
-Use the code-review-and-quality skill to review the current diff
-```
-
-OpenCode загружает skills через встроенный инструмент `skill` и умеет выбирать их автоматически. В версии OpenCode `2.x` отдельной команды `opencode debug skill` нет; проверяйте наличие файлов через `find ~/.agents/skills -name SKILL.md`. Проектные правила храните в `AGENTS.md`.
-
-> ClaudeForge не предназначен для OpenCode. agent-skills используется здесь как набор стандартных Agent Skills, а не как OpenCode-плагин.
-
-### Установка шаблонов из этого репозитория
-
-Выполните из корня этого репозитория:
-
-```bash
-mkdir -p ~/.agents/skills/agent-md-init ~/.config/opencode
-cp templates/codex-opencode/agent-md-init/SKILL.md ~/.agents/skills/agent-md-init/SKILL.md
-cp templates/codex-opencode/global-AGENTS.md ~/.config/opencode/AGENTS.md
-```
-
-Если `~/.config/opencode/AGENTS.md` уже существует, объедините файлы вручную. Перезапустите OpenCode. В запросе используйте: `Use the agent-md-init skill to create or update this project's AGENTS.md`.
-
----
-
-## 5. Python LSP (Pyright)
-
-LSP даёт агенту диагностику типов и навигацию по Python-коду: переход к определению, поиск ссылок и информацию о символах. Установите Pyright один раз:
-
-```bash
-npm install -g pyright
-pyright --version
-command -v pyright-langserver
-```
-
-Для Fish, если глобальные npm-команды не находятся, добавьте каталог npm в `PATH`:
-
-```fish
-fish_add_path (npm prefix -g)/bin
-```
-
-Для Bash выполните:
-
-```bash
-export PATH="$(npm prefix -g)/bin:$PATH"
-```
-
-После изменения `PATH` полностью перезапустите агента из того же терминала.
-
-### Claude Code
-
-Claude Code подключает Pyright через официальный LSP-плагин:
-
-```text
-/plugin marketplace add anthropics/claude-plugins-official
-/plugin install pyright-lsp@claude-plugins-official
-/reload-plugins
-```
-
-Проверьте установку:
-
-```bash
-claude plugin list
-pyright --version
-command -v pyright-langserver
-```
-
-Старый MCP-сервер `@mcp/python-lsp` для этого не нужен. Если он был установлен и отображается как `python-lsp MCP · failed`, удалите его:
-
-```bash
-claude mcp remove python-lsp
-```
-
-Затем перезапустите Claude Code. В `/plugin` плагин `pyright-lsp` должен быть включён без ошибок.
-
-### OpenCode
-
-Создайте глобальный `~/.config/opencode/opencode.json` для всех проектов либо `opencode.json` в корне конкретного проекта:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
+    "fetch": { "type": "local", "command": ["uvx", "mcp-server-fetch"], "enabled": true }
+  },
   "lsp": true,
-  "permission": {
-    "lsp": "allow"
-  }
+  "permission": { "lsp": "allow" }
 }
 ```
 
-Запустите OpenCode с экспериментальным инструментом навигации LSP:
+Навигация через LSP включается переменной `OPENCODE_EXPERIMENTAL_LSP_TOOL=true`. Skills вызываются запросом вида «Use the spec-driven-development skill …».
+
+### Опционально для Codex и OpenCode
 
 ```bash
-OPENCODE_EXPERIMENTAL_LSP_TOOL=true opencode
-```
+# Граф кодовой базы (установщик сам найдёт агентов)
+curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
+codebase-memory-mcp install -y   # регистрирует себя и в Claude: уберите там через claude mcp remove codebase-memory-mcp -s user
 
-Чтобы не указывать флаг при каждом запуске, сохраните переменную окружения один раз. Для Fish:
-
-```fish
-set -Ux OPENCODE_EXPERIMENTAL_LSP_TOOL true
-```
-
-Для Bash добавьте в `~/.bashrc`:
-
-```bash
-export OPENCODE_EXPERIMENTAL_LSP_TOOL=true
-```
-
-После этого запускайте OpenCode обычной командой `opencode`. Чтобы выключить настройку в Fish, выполните `set -eU OPENCODE_EXPERIMENTAL_LSP_TOOL`.
-
-Pyright входит в список встроенных LSP-конфигураций OpenCode и активируется для `.py` и `.pyi`, когда `pyright` установлен. Без экспериментального инструмента OpenCode всё равно может использовать LSP-диагностику, но агент не получает операции перехода к определению и поиска ссылок.
-
-### Codex
-
-В Codex нет штатной пользовательской настройки Python LSP. Добавьте в `AGENTS.md` команду проверки типов, чтобы агент запускал Pyright после изменений:
-
-```md
-После изменений Python-кода запускай `pyright`.
+# Caveman — сжатый стиль ответов
+npx skills@latest add JuliusBrussee/caveman --global --agent codex opencode --skill '*' --yes
 ```
 
 ---
 
-## 6. Рекомендуемый workflow (agent-skills)
-
-```text
-/spec          # уточнить требования, написать спецификацию до кода
-   ↓
-/plan          # разбить на маленькие задачи с критериями приёмки
-   ↓
-/build         # реализовать по задачам (/build auto — весь план за раз)
-   ↓
-/test          # TDD; для бага сначала падающий тест (Prove-It)
-   ↓
-/code-review   # встроенный: поиск багов; /review — архитектура и читаемость
-   ↓
-/ship          # чеклист перед релизом, решение go/no-go
-```
-
-Slash-команды доступны в Claude Code через плагин. В Codex и OpenCode вызывайте те же процессы через skills: `spec-driven-development`, `planning-and-task-breakdown`, `incremental-implementation`, `test-driven-development`, `code-review-and-quality`, `shipping-and-launch`. Когда что использовать: [agent-skills-guide.md](agent-skills-guide.md).
-
-После установки или обновления конфигурации полностью перезапустите выбранного агента.
-
-## 7. Проверка
+## 5. Проверка
 
 ```bash
+claude mcp list            # fetch
 claude plugin list
-claude mcp list
-
 codex mcp list
-
 opencode mcp list
-find ~/.agents/skills -name SKILL.md -print
-
-npx skills list --global
-
-test -f ~/.codex/AGENTS.md
-test -f ~/.codex/skills/agent-md-init/SKILL.md
-test -f ~/.config/opencode/AGENTS.md
-test -f ~/.agents/skills/agent-md-init/SKILL.md
-command -v jupytext
-command -v ast-grep
-command -v rtk
-command -v codebase-memory-mcp
-command -v pyright
+for c in uv jq jupytext sg rtk pyright codex opencode; do command -v $c >/dev/null || echo "нет: $c"; done
 ```
 
-Ожидаемый результат: `codebase-memory-mcp`, `fetch` и `sequential-thinking` подключены в выбранных средах; Codex видит skills из `~/.codex/skills/`, OpenCode — из `~/.agents/skills/`; `jupytext`, `ast-grep`, `rtk`, `codebase-memory-mcp` и `pyright` доступны в `PATH`. Команды `command -v` с ненулевым кодом означают, что компонент не установлен.
-
-## Полезные ссылки
-
-- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
-- [Codex Skills](https://learn.chatgpt.com/docs/build-skills?surface=cli)
-- [OpenCode Agent Skills](https://opencode.ai/docs/skills)
+После любых изменений конфигурации перезапустите агента: skills, команды и хуки подхватываются при старте.
