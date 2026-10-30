@@ -45,4 +45,4 @@
 /spec → /plan → /build → /test → /code-review → /review → /ship
 ```
 
-Личные правила зависят от среды: Claude Code использует `~/.claude/CLAUDE.md`, Codex — `~/.codex/AGENTS.md`, OpenCode — `~/.config/opencode/AGENTS.md`. Шаблоны: [Claude](templates/claude/), [Codex/OpenCode](templates/codex-opencode/).
+Личные правила зависят от среды: Claude Code использует `~/.claude/CLAUDE.md`, Codex — `~/.codex/AGENTS.md`, OpenCode — `~/.config/opencode/AGENTS.md`, Cursor — User Rules и `~/.cursor/rules/personal.mdc`. Шаблоны: [Claude](templates/claude/), [Codex/OpenCode](templates/codex-opencode/), [Cursor](templates/cursor/).

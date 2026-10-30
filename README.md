@@ -1,4 +1,4 @@
-# 🚀 Агентный стек для Claude Code, Codex и OpenCode
+# 🚀 Агентный стек для Claude Code, Codex, OpenCode и Cursor
 
 Окружение для ML и Python-разработки: процессы разработки из [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (spec → plan → build → test → review → ship), сжатие вывода терминала (RTK), автоформатирование, минимум MCP.
 
@@ -9,6 +9,7 @@
 | Claude Code | `~/.claude/CLAUDE.md`, `CLAUDE.md` проекта | `~/.claude/skills/` | [templates/claude/](templates/claude/) |
 | Codex | `~/.codex/AGENTS.md`, `AGENTS.md` проекта | `~/.agents/skills/`, `~/.codex/skills/` | [templates/codex-opencode/](templates/codex-opencode/) |
 | OpenCode | `~/.config/opencode/AGENTS.md`, `AGENTS.md` проекта | `~/.agents/skills/` | [templates/codex-opencode/](templates/codex-opencode/) |
+| Cursor | User Rules + `~/.cursor/rules/`, `AGENTS.md` проекта | `~/.cursor/skills/` | [templates/cursor/](templates/cursor/) |
 
 Все команды ниже выполняются из корня этого репозитория.
 
@@ -197,13 +198,45 @@ npx skills@latest add JuliusBrussee/caveman --global --agent codex opencode --sk
 
 ---
 
-## 5. Проверка
+## 5. Cursor
+
+```bash
+mkdir -p ~/.cursor/{skills/agent-md-init,rules,commands}
+cp templates/cursor/agent-md-init/SKILL.md ~/.cursor/skills/agent-md-init/
+cp templates/cursor/rules/personal.mdc ~/.cursor/rules/
+cp templates/cursor/commands/agent-md-init.md ~/.cursor/commands/
+```
+
+Вставь содержимое [templates/cursor/global-user-rules.md](templates/cursor/global-user-rules.md) в **Customize → Rules** (User Rules). Это синхронизируется с аккаунтом. Файл `~/.cursor/rules/personal.mdc` — то же самое на этой машине, с `alwaysApply: true`.
+
+Что даёт каждая часть:
+
+| Часть | Назначение |
+| --- | --- |
+| User Rules / `personal.mdc` | личные правила: русский язык, Karpathy, git и коммиты, безопасность, экономия контекста, актуальность `AGENTS.md` |
+| `~/.cursor/skills/agent-md-init/` | skill, доступный в любом репозитории: Agent собирает проектный `AGENTS.md` |
+| `~/.cursor/commands/agent-md-init.md` | slash-команда `/agent-md-init` |
+
+Skills из `npx skills@latest add … --global` уже лежат в `~/.agents/skills/` и `~/.claude/skills/`; Cursor их тоже видит. Отдельно ставить addyosmani/agent-skills для Cursor не нужно.
+
+### Проект
+
+В чате Agent: `/agent-md-init` или «use the agent-md-init skill». Получится корневой `AGENTS.md` на 40–80 строк: стек, карта кода, проверенные команды, запуск одного теста, что не читать. Личные правила туда не копируются.
+
+Коммиты по умолчанию делаете вы. Чтобы агент коммитил сам, добавьте в `AGENTS.md` проекта строку `Auto-commit: allowed`.
+
+После копирования skills/rules перезапустите Cursor или откройте новый Agent-чат.
+
+---
+
+## 6. Проверка
 
 ```bash
 claude mcp list            # fetch
 claude plugin list
 codex mcp list
 opencode mcp list
+test -f ~/.cursor/skills/agent-md-init/SKILL.md && echo "cursor skill: ok" || echo "нет: cursor agent-md-init"
 for c in uv jq jupytext sg rtk pyright codex opencode; do command -v $c >/dev/null || echo "нет: $c"; done
 ```
 

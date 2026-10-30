@@ -1,0 +1,59 @@
+# Personal rules (all projects, every Cursor Agent session)
+
+## Communication
+- Respond to the user in RUSSIAN. Thinking, tool calls, and AGENTS.md files stay English.
+- Concise, direct, zero fluff, no pleasantries or long recaps.
+- Code comments, docstrings, commit messages: match the language already used in the repo (check `git log` and existing comments). Identifiers and API fields stay English.
+
+## Cursor
+- Project facts → root `AGENTS.md`. Personal defaults → User Rules / `~/.cursor/rules`. File-scoped conventions → `.cursor/rules/*.mdc` with `globs`, never always-apply. Do not create `CLAUDE.md` or `.cursorrules`.
+- Agent: implement. Ask: explore with no edits. Plan: unclear scope or multiple approaches — wait for confirmation before coding.
+- Web UI changes: verify with the built-in browser (click, type, submit). A screenshot is not enough. Computer Use only if the user asks to drive the Windows desktop.
+- `@path` in rules is a hint to read the file; it is not inlined. Anything that must be in every chat goes in the rule or `AGENTS.md` body.
+
+## Editing
+- Karpathy mode (skill `karpathy-guidelines` when available): minimal diffs. Never refactor or reformat code unrelated to the change.
+- Structural (AST) search/refactor: `sg` (ast-grep); text, configs, Markdown: `rg` / Grep.
+
+## Git
+- Conventional Commits prefix (`feat(scope): ...`, `fix(scope): ...`).
+- Subject ≤72 chars, imperative, no period. Body only for non-obvious why, breaking changes, migrations.
+- No "This commit…", no restating the diff.
+- One logical change per commit; split unrelated changes (refactor separate from fix).
+- Stage files by name, never `git add -A` / `git add .`; never stage `.env`, keys, data files, model weights.
+- Commit only with lint and fast tests passing.
+- The user commits by default: after each finished atomic change, give a ready one-line command `git add <files> && git commit -m "<subject>" [-m "<body>"]`.
+- Only if the project `AGENTS.md` says `Auto-commit: allowed`: commit each atomic change yourself, by the rules above.
+- NEVER add `Co-Authored-By` or "Generated with Cursor" lines to commits or PRs.
+
+## Safety
+- Long tasks: never auto-run heavy scripts, training, GPU jobs, large downloads, or builds that take minutes. Print the command for the user to run.
+- On a failed command or test: find the root cause first. Never retry blindly.
+- Never weaken the quality bar to get green: no new `noqa`/`type: ignore`/`eslint-disable`/`ts-ignore`, no skipped or deleted tests, no lowered thresholds.
+- Dev servers, watchers, `docker compose up`: run in background or give the user the command. Interactive CLIs: pass `-y`/`--non-interactive`.
+- Never print values from `.env`, credentials, or keys; redact them in output.
+- Don't add or upgrade dependencies unless the task needs it; check stdlib and existing deps first. Lockfiles change only via the package manager CLI.
+
+## Tool routing
+- Unsure about a library or framework API: fetch current official docs, do not guess.
+- Any chart, plot, or dashboard: load skill `dataviz` first when available.
+- Bug with unclear cause: skill `investigate-first` before editing.
+- New or stale project instructions: skill `agent-md-init`.
+
+## Context economy
+- Search (`rg`, Grep) before reading. Large files: Read with offset/limit, never whole.
+- Long command output: filter with `tail`/`grep`/`head`; never dump full logs or data files.
+- Never read data files, model weights, notebook outputs, or lockfiles unless asked.
+- Wide codebase searches: keep only a summary.
+- Task finished and the next one is unrelated: start a new Agent chat.
+
+## Stack defaults (apply only if the project uses it)
+- Python: ALWAYS `uv` (`uv sync`, `uv run ...`), never bare `pip`/`python`. After `.py` edits run `ruff check --fix` and `ruff format` on the changed files; fix only the errors they report.
+- JS/TS: use the package manager matching the lockfile. After edits run lint, format, typecheck/build.
+- Tests: while fixing, run only the failing test; the full fast suite once before reporting done. Never auto-run GPU, e2e, or heavy tests.
+
+## Keeping AGENTS.md current
+- After every change: if it made anything in `AGENTS.md` outdated (commands, paths, structure, tools, workflow), update that file in the same change.
+- New project rule from the user during work: record it in the project `AGENTS.md`.
+- New general rule for working with the user: record it in Cursor User Rules and `~/.cursor/rules/personal.mdc`.
+- One short line per rule, no duplicates. Tell the user what was added or changed.
